@@ -1,0 +1,2226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum Cryptography Simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.3/math.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   QUANTUM CRYPTOGRAPHY SIMULATOR — macOS Dark Mode
+   Physics: Shor-Preskill bound, Born rule, Privacy Amplification
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* macOS Dark Backgrounds — Sonoma/Ventura palette */
+  --bg-base:         #000000;
+  --bg-window:       rgba(28, 28, 30, 0.99);
+  --bg-sidebar:      rgba(28, 28, 30, 0.98);
+  --bg-header:       rgba(38, 38, 40, 0.99);
+  --bg-card:         rgba(44, 44, 46, 0.92);
+  --bg-fill:         rgba(255, 255, 255, 0.065);
+  --bg-fill-2:       rgba(255, 255, 255, 0.035);
+  --bg-input:        rgba(58, 58, 60, 0.95);
+
+  /* Labels — light on dark */
+  --lbl-1:   rgba(255, 255, 255, 0.88);
+  --lbl-2:   rgba(255, 255, 255, 0.58);
+  --lbl-3:   rgba(255, 255, 255, 0.32);
+  --lbl-4:   rgba(255, 255, 255, 0.16);
+
+  /* Separators */
+  --sep:     rgba(84, 84, 88, 0.65);
+  --sep-hi:  rgba(84, 84, 88, 0.36);
+
+  /* macOS System Colors – Dark Mode */
+  --blue:      #0A84FF;
+  --blue-bg:   rgba(10, 132, 255, 0.14);
+  --blue-bd:   rgba(10, 132, 255, 0.28);
+  --green:     #30D158;
+  --green-bg:  rgba(48, 209, 88, 0.12);
+  --green-bd:  rgba(48, 209, 88, 0.28);
+  --red:       #FF453A;
+  --red-bg:    rgba(255, 69, 58, 0.12);
+  --red-bd:    rgba(255, 69, 58, 0.28);
+  --orange:    #FF9F0A;
+  --orange-bg: rgba(255, 159, 10, 0.12);
+  --purple:    #BF5AF2;
+  --purple-bg: rgba(191, 90, 242, 0.12);
+  --purple-bd: rgba(191, 90, 242, 0.28);
+  --cyan:      #5AC8FA;
+  --cyan-bg:   rgba(90, 200, 250, 0.10);
+  --cyan-bd:   rgba(90, 200, 250, 0.22);
+
+  /* Typography — SF Pro */
+  --font:      -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "Menlo", "Monaco", ui-monospace, "Courier New", monospace;
+
+  /* Geometry */
+  --sidebar-w:   282px;
+  --inspector-w: 298px;
+  --titlebar-h:  50px;
+  --r-xs: 4px;
+  --r-sm: 7px;
+  --r-md: 10px;
+  --r-lg: 14px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  background: var(--bg-base);
+  color: var(--lbl-1);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.45;
+  height: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.16); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.26); }
+
+/* ── TITLE BAR ──────────────────────────────────────────────── */
+.topbar {
+  height: var(--titlebar-h);
+  background: linear-gradient(to bottom, #3a3a3c, #2c2c2e);
+  border-bottom: 1px solid rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  position: relative;
+  z-index: 100;
+  flex-shrink: 0;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 1px 6px rgba(0,0,0,0.40);
+}
+
+.topbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  flex: 1;
+  letter-spacing: 0.005em;
+}
+.topbar-title span {
+  color: rgba(255,255,255,0.32);
+  font-weight: 400;
+  margin-left: 5px;
+}
+
+/* ── HELP BUTTON ─────────────────────────────────────────────── */
+.help-btn {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.10);
+  border: 0.5px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.60);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.30);
+  letter-spacing: 0;
+}
+.help-btn:hover {
+  background: rgba(10,132,255,0.22);
+  border-color: rgba(10,132,255,0.45);
+  color: var(--blue);
+  box-shadow: 0 0 8px rgba(10,132,255,0.22);
+}
+
+.status-bar { display:flex; gap:6px; align-items:center; }
+.s-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.07);
+  border: 0.5px solid rgba(255,255,255,0.12);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--lbl-2);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+.s-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all .3s;
+}
+.s-dot.blue  { background: var(--blue);  box-shadow: 0 0 5px rgba(10,132,255,0.6); }
+.s-dot.green { background: var(--green); box-shadow: 0 0 5px rgba(48,209,88,0.6); }
+.s-dot.red   { background: var(--red);   box-shadow: 0 0 5px rgba(255,69,58,0.6); animation: pulse-r 1.2s ease-in-out infinite; }
+@keyframes pulse-r { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+/* ── LAYOUT ─────────────────────────────────────────────────── */
+.main {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr var(--inspector-w);
+  height: calc(100vh - var(--titlebar-h));
+  overflow: hidden;
+}
+
+/* ── PANELS ─────────────────────────────────────────────────── */
+.panel {
+  background: var(--bg-sidebar);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel.left  { border-right: 1px solid var(--sep); }
+.panel.right { border-left:  1px solid var(--sep); }
+
+.panel-hdr {
+  padding: 13px 15px 10px;
+  border-bottom: 1px solid var(--sep);
+  background: var(--bg-header);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04);
+}
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--lbl-3);
+}
+.panel-body {
+  padding: 13px 11px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── CARD ───────────────────────────────────────────────────── */
+.gcard {
+  background: var(--bg-card);
+  border: 0.5px solid rgba(255,255,255,0.09);
+  border-radius: var(--r-md);
+  padding: 11px 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.30), 0 0.5px 0 rgba(255,255,255,0.05) inset;
+}
+
+/* ── SECTION TITLE ──────────────────────────────────────────── */
+.sec-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lbl-2);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  letter-spacing: 0.01em;
+}
+.sec-title::before {
+  content:''; width:3px; height:13px;
+  background: var(--blue);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.sec-title.pur::before { background: var(--purple); }
+.sec-title.suc::before { background: var(--green); }
+.sec-title.dan::before { background: var(--red); }
+
+.out-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--lbl-3);
+  margin-bottom: 5px;
+}
+
+/* ── SEGMENTED CONTROL ──────────────────────────────────────── */
+.src-toggle {
+  display: flex;
+  gap: 2px;
+  background: rgba(0,0,0,0.30);
+  border: 0.5px solid rgba(255,255,255,0.09);
+  border-radius: var(--r-sm);
+  padding: 2px;
+}
+.src-btn {
+  flex: 1;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--lbl-3);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: var(--font);
+  letter-spacing: 0.01em;
+}
+.src-btn.on {
+  background: rgba(255,255,255,0.12);
+  color: var(--lbl-1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.30), 0 0.5px 0 rgba(255,255,255,0.08) inset;
+}
+.src-btn:not(.on):hover { background: rgba(255,255,255,0.06); color: var(--lbl-2); }
+
+/* ── BASIS PILLS ────────────────────────────────────────────── */
+.basis-wrap { display:flex; gap:6px; }
+.basis-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 0.5px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  color: var(--lbl-3);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: var(--font);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.20);
+}
+.basis-btn.on {
+  border-color: rgba(191,90,242,0.40);
+  background: rgba(191,90,242,0.12);
+  color: var(--purple);
+  box-shadow: 0 1px 2px rgba(191,90,242,0.15);
+}
+.basis-btn:not(.on):hover { background: rgba(255,255,255,0.09); color: var(--lbl-2); }
+
+/* ── SLIDERS ────────────────────────────────────────────────── */
+.sl-group { display:flex; flex-direction:column; gap:7px; }
+.sl-hdr   { display:flex; justify-content:space-between; align-items:baseline; }
+.sl-lbl   { font-size: 12px; color: var(--lbl-2); font-weight: 400; }
+.sl-val   {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--blue);
+  background: var(--blue-bg);
+  padding: 2px 7px;
+  border-radius: var(--r-xs);
+  min-width: 58px;
+  text-align: right;
+  transition: all .2s;
+  border: 0.5px solid var(--blue-bd);
+}
+
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  transition: height .12s;
+  background: linear-gradient(
+    to right,
+    var(--sl-color, var(--blue)) 0%,
+    var(--sl-color, var(--blue)) var(--sl-pct, 50%),
+    rgba(255,255,255,0.12) var(--sl-pct, 50%),
+    rgba(255,255,255,0.12) 100%
+  );
+}
+input[type=range]:hover { height: 5px; }
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, #d0d0d2, #a0a0a4);
+  border: 0.5px solid rgba(0,0,0,0.50);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.50), 0 0.5px 0 rgba(255,255,255,0.16) inset;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+  box-shadow: 0 2px 7px rgba(0,0,0,0.55), 0 0.5px 0 rgba(255,255,255,0.16) inset;
+}
+input[type=range]::-webkit-slider-thumb:active { transform: scale(0.96); }
+
+.mini-g { width:100%; height:30px; display:block; border-radius:3px; opacity: 0.80; }
+
+/* ── BUTTONS ────────────────────────────────────────────────── */
+.act-btns { display:flex; gap:7px; }
+.btn-act {
+  flex: 1;
+  padding: 7px 10px;
+  background: linear-gradient(to bottom, rgba(72,72,74,0.90), rgba(54,54,56,0.90));
+  border: 0.5px solid rgba(255,255,255,0.12);
+  border-radius: var(--r-sm);
+  color: var(--lbl-2);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.30), 0 0.5px 0 rgba(255,255,255,0.08) inset;
+}
+.btn-act:hover { background: linear-gradient(to bottom, rgba(88,88,90,0.90), rgba(68,68,70,0.90)); color: var(--lbl-1); border-color: rgba(255,255,255,0.18); }
+.btn-act:active { transform: scale(0.98); box-shadow: 0 0 1px rgba(0,0,0,0.40) inset; }
+
+.btn-primary {
+  width: 100%;
+  padding: 9px 14px;
+  background: linear-gradient(to bottom, #1a8fff, #0A84FF);
+  border: 0.5px solid rgba(255,255,255,0.16);
+  border-radius: var(--r-sm);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 590;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: all .15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.40), 0 1px 0 rgba(255,255,255,0.20) inset;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  text-shadow: 0 -1px 0 rgba(0,0,0,0.20);
+}
+.btn-primary:hover {
+  background: linear-gradient(to bottom, #2c9dff, #1a8fff);
+  box-shadow: 0 2px 12px rgba(10,132,255,0.40), 0 1px 0 rgba(255,255,255,0.20) inset;
+}
+.btn-primary:active { transform: scale(0.99); background: linear-gradient(to bottom, #0070eb, #006de0); }
+
+.btn-success {
+  background: linear-gradient(to bottom, #38d960, #30D158) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.20) inset !important;
+}
+.btn-success:hover {
+  background: linear-gradient(to bottom, #44e06c, #38d960) !important;
+  box-shadow: 0 2px 12px rgba(48,209,88,0.35), 0 1px 0 rgba(255,255,255,0.20) inset !important;
+}
+
+/* ── TEXT INPUT ─────────────────────────────────────────────── */
+.msg-in {
+  width: 100%;
+  background: rgba(58,58,60,0.95);
+  border: 0.5px solid rgba(255,255,255,0.12);
+  border-radius: var(--r-sm);
+  color: var(--lbl-1);
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 9px 11px;
+  resize: none;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  line-height: 1.5;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.30) inset;
+}
+.msg-in:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(10,132,255,0.22), 0 1px 3px rgba(0,0,0,0.30) inset;
+}
+.msg-in::placeholder { color: var(--lbl-4); }
+
+/* ── MONO OUTPUTS ───────────────────────────────────────────── */
+.mono-out {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #66b2ff;
+  background: rgba(10,100,255,0.10);
+  border: 0.5px solid rgba(10,100,255,0.22);
+  border-radius: var(--r-sm);
+  padding: 9px 10px;
+  word-break: break-all;
+  line-height: 1.75;
+  max-height: 62px;
+  overflow-y: auto;
+  min-height: 36px;
+}
+.key-disp {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #d08aff;
+  background: rgba(191,90,242,0.10);
+  border: 0.5px solid rgba(191,90,242,0.24);
+  border-radius: var(--r-sm);
+  padding: 9px 10px;
+  word-break: break-all;
+  line-height: 1.85;
+  max-height: 54px;
+  overflow-y: auto;
+}
+
+/* ── STATS GRID ─────────────────────────────────────────────── */
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.stat-c {
+  background: rgba(58,58,60,0.80);
+  border: 0.5px solid rgba(255,255,255,0.09);
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.stat-c-lbl {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--lbl-3);
+  margin-bottom: 3px;
+}
+.stat-c-val {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--lbl-1);
+  transition: color .3s;
+  letter-spacing: -0.01em;
+}
+.stat-c-val.dan  { color: var(--red); }
+.stat-c-val.suc  { color: var(--green); }
+.stat-c-val.warn { color: var(--orange); }
+.stat-c-val.acc  { color: var(--blue); }
+
+/* ── SECURITY BADGE ─────────────────────────────────────────── */
+.sec-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: all .3s;
+}
+.sec-badge.secure {
+  background: rgba(48,209,88,0.12);
+  border: 0.5px solid rgba(48,209,88,0.30);
+  color: var(--green);
+}
+.sec-badge.comp {
+  background: rgba(255,69,58,0.12);
+  border: 0.5px solid rgba(255,69,58,0.30);
+  color: var(--red);
+  animation: flicker 1.8s ease-in-out infinite;
+}
+@keyframes flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.3} 94%{opacity:1} 96%{opacity:.5} 97%{opacity:1} }
+
+/* ── PROGRESS BAR ───────────────────────────────────────────── */
+.prog-bar {
+  height: 5px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
+  border: 0.5px solid rgba(255,255,255,0.08);
+}
+.prog-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--blue), var(--purple));
+  transition: width .5s ease;
+}
+.prog-fill.dan {
+  background: linear-gradient(90deg, var(--orange), var(--red));
+}
+
+/* ── PHOTON STATE BITS ──────────────────────────────────────── */
+.ph-states {
+  display: flex; gap: 3px; flex-wrap: wrap;
+  padding: 8px;
+  background: rgba(58,58,60,0.70);
+  border-radius: var(--r-sm);
+  border: 0.5px solid rgba(255,255,255,0.09);
+  min-height: 48px;
+  align-content: flex-start;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25) inset;
+}
+.ph-bit {
+  width: 17px; height: 17px;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600; flex-shrink: 0;
+}
+.ph-bit.z { background: rgba(10,132,255,0.14);   color: #66b2ff;  border: 0.5px solid rgba(10,132,255,0.28); }
+.ph-bit.o { background: rgba(191,90,242,0.14);    color: #d08aff;  border: 0.5px solid rgba(191,90,242,0.28); }
+.ph-bit.e { background: rgba(255,69,58,0.14);     color: var(--red); border: 0.5px solid rgba(255,69,58,0.28); animation: flash .5s ease-in-out; }
+@keyframes flash { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ── CENTER PANEL ───────────────────────────────────────────── */
+.center-panel { display:flex; flex-direction:column; overflow:hidden; position:relative; background:#111113; }
+.channel-area { flex:1; position:relative; overflow:hidden; background: linear-gradient(to bottom, #18181a, #121214); }
+#photon-canvas { width:100%; height:100%; display:block; }
+#noise-canvas  { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; opacity:0; transition:opacity .5s; }
+
+/* ── NODE AVATARS ───────────────────────────────────────────── */
+.ch-nodes {
+  position: absolute; bottom:0; left:0; right:0;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 14px 44px;
+  pointer-events: none;
+}
+.node-lbl { display:flex; flex-direction:column; align-items:center; gap:5px; }
+.node-av {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+}
+.node-av.alice {
+  background: linear-gradient(135deg,rgba(10,132,255,.22),rgba(10,132,255,.08));
+  border: 1.5px solid rgba(10,132,255,.50);
+  color: var(--blue);
+  box-shadow: 0 2px 12px rgba(10,132,255,.28), 0 0 0 3px rgba(10,132,255,.08);
+}
+.node-av.bob {
+  background: linear-gradient(135deg,rgba(48,209,88,.20),rgba(48,209,88,.07));
+  border: 1.5px solid rgba(48,209,88,.46);
+  color: var(--green);
+  box-shadow: 0 2px 12px rgba(48,209,88,.24), 0 0 0 3px rgba(48,209,88,.07);
+}
+.node-av.eve {
+  background: linear-gradient(135deg,rgba(255,69,58,.24),rgba(191,90,242,.14));
+  border: 1.5px solid rgba(255,69,58,.55);
+  color: var(--red);
+  box-shadow: 0 2px 12px rgba(255,69,58,.35), 0 0 0 3px rgba(255,69,58,.10);
+  animation: eve-p 2s ease-in-out infinite;
+}
+@keyframes eve-p {
+  0%,100%{box-shadow:0 2px 12px rgba(255,69,58,.35), 0 0 0 3px rgba(255,69,58,.10)}
+  50%{box-shadow:0 2px 22px rgba(255,69,58,.60), 0 0 0 5px rgba(255,69,58,.14)}
+}
+.node-nm {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.node-nm.alice { color: var(--blue); }
+.node-nm.bob   { color: var(--green); }
+.node-nm.eve   { color: var(--red); }
+
+/* ── CENTER CONTROLS ────────────────────────────────────────── */
+.center-ctrl {
+  padding: 11px 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(to bottom, #2a2a2c, #222224);
+  flex-shrink: 0;
+  box-shadow: 0 -1px 0 rgba(0,0,0,0.40);
+}
+
+/* ── EVE TOGGLE ─────────────────────────────────────────────── */
+.tog-wrap { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.tog { position:relative; width:38px; height:22px; flex-shrink:0; }
+.tog input { opacity:0; width:0; height:0; position:absolute; }
+.tog-track {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0.14);
+  border-radius: 11px;
+  border: 0.5px solid rgba(255,255,255,0.10);
+  transition: background .2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.35) inset;
+}
+.tog input:checked + .tog-track {
+  background: var(--red);
+  border-color: rgba(255,69,58,0.40);
+  box-shadow: 0 0 0 0.5px rgba(255,69,58,0.35), 0 0 8px rgba(255,69,58,0.20);
+}
+.tog-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  background: linear-gradient(to bottom, #e0e0e2, #c4c4c6);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.50);
+  transition: transform .2s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: none;
+}
+.tog input:checked ~ .tog-thumb { transform: translateX(16px); }
+
+/* Eve toggle label with state indicator */
+.eve-tog-container {
+  display: flex; align-items: center; gap: 8px;
+}
+.eve-state-pill {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 100px;
+  transition: all .25s;
+}
+.eve-state-pill.disabled {
+  background: rgba(255,255,255,0.07);
+  border: 0.5px solid rgba(255,255,255,0.12);
+  color: var(--lbl-3);
+}
+.eve-state-pill.enabled {
+  background: rgba(255,69,58,0.14);
+  border: 0.5px solid rgba(255,69,58,0.35);
+  color: var(--red);
+  box-shadow: 0 0 8px rgba(255,69,58,0.15);
+  animation: eve-pill-pulse 2s ease-in-out infinite;
+}
+@keyframes eve-pill-pulse { 0%,100%{opacity:1} 50%{opacity:.70} }
+
+.tog-lbl { font-size: 12px; font-weight: 500; color: var(--lbl-2); }
+
+/* ── MODE PILLS ─────────────────────────────────────────────── */
+.mode-pills { display:flex; gap:4px; margin-left:auto; }
+.mode-pill {
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  border: 0.5px solid rgba(255,255,255,0.12);
+  background: linear-gradient(to bottom, rgba(72,72,74,0.80), rgba(54,54,56,0.80));
+  color: var(--lbl-3);
+  font-family: var(--font);
+  transition: all .15s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.mode-pill.on {
+  background: linear-gradient(to bottom, rgba(10,132,255,0.18), rgba(10,132,255,0.12));
+  border-color: rgba(10,132,255,0.36);
+  color: var(--blue);
+  box-shadow: 0 0 8px rgba(10,132,255,0.15);
+}
+
+/* ── BB84 TABLE ─────────────────────────────────────────────── */
+.bb84-box {
+  background: rgba(38,38,40,0.96);
+  border: 0.5px solid rgba(255,255,255,0.12);
+  border-radius: var(--r-md);
+  padding: 10px;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.40);
+}
+.bb84-box table { width:100%; border-collapse:collapse; }
+.bb84-box td {
+  padding: 3px 4px;
+  text-align: center;
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  border-bottom: 0.5px solid rgba(255,255,255,0.05);
+  color: var(--lbl-2);
+}
+.bb84-box .rh {
+  color: var(--lbl-3); font-size: 10px; font-weight: 500;
+  text-align: left; padding-left: 5px; font-family: var(--font);
+}
+.bb84-box .ok { color: var(--green); }
+.bb84-box .no { color: var(--red); }
+.bb84-box .kb { color: var(--blue); font-weight: 600; }
+
+/* ── EVE BOTTOM BAR ─────────────────────────────────────────── */
+.eve-bar {
+  position: fixed; bottom: 0;
+  left: var(--sidebar-w); right: var(--inspector-w);
+  background: rgba(40, 16, 14, 0.98);
+  backdrop-filter: blur(20px);
+  border-top: 1.5px solid rgba(255,69,58,.45);
+  padding: 11px 18px;
+  display: none; gap: 18px; align-items: center;
+  z-index: 50;
+  box-shadow: 0 -2px 16px rgba(255,69,58,0.18);
+}
+.eve-bar.show { display: flex; }
+.eve-st { display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
+.eve-st-lbl { font-size: 9px; letter-spacing:.10em; text-transform:uppercase; color: rgba(255,120,112,.70); }
+.eve-st-val { font-family: var(--font-mono); font-size: 14px; color: var(--red); font-weight: 600; }
+.eve-key-flow {
+  flex:1; font-family:var(--font-mono); font-size:8.5px;
+  color:rgba(255,120,112,.55); word-break:break-all;
+  line-height:1.7; max-height:32px; overflow:hidden;
+}
+
+/* ── CHART ──────────────────────────────────────────────────── */
+.chart-wrap { position:relative; height:70px; width:100%; }
+
+/* ── SEPARATOR ──────────────────────────────────────────────── */
+.sep-line { height:1px; background:rgba(255,255,255,0.07); margin:2px 0; }
+
+/* ── EVE RIGHT PANEL ────────────────────────────────────────── */
+#eve-right { display:none; flex-direction:column; gap:9px; }
+
+/* ── QUANTUM STATE CHIP OVERLAY ─────────────────────────────── */
+.qstate-overlay {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  pointer-events: none;
+  display: flex; gap: 8px; align-items: center;
+}
+
+/* ── PHYSICS INFO PANEL ─────────────────────────────────────── */
+.phy-badge {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--lbl-3);
+  background: rgba(255,255,255,0.04);
+  border: 0.5px solid rgba(255,255,255,0.09);
+  border-radius: 4px;
+  padding: 3px 6px;
+  letter-spacing: 0.02em;
+}
+
+/* ── PA STATS STRIP ─────────────────────────────────────────── */
+.pa-strip {
+  background: rgba(191,90,242,0.08);
+  border: 0.5px solid rgba(191,90,242,0.22);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pa-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+.pa-lbl { color: var(--lbl-3); }
+.pa-val { font-family: var(--font-mono); font-weight: 600; color: #d08aff; font-size: 10px; }
+.pa-val.warn { color: var(--orange); }
+.pa-val.ok   { color: var(--green); }
+.pa-val.err  { color: var(--red); }
+
+/* ═══════════════════════════════════════════════════════════════
+   HELP MODAL OVERLAY
+   ═══════════════════════════════════════════════════════════════ */
+.help-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.70);
+  backdrop-filter: blur(12px);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.help-overlay.open { display: flex; }
+
+.help-panel {
+  background: #1c1c1e;
+  border: 0.5px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.70), 0 1px 0 rgba(255,255,255,0.06) inset;
+  width: 100%; max-width: 720px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.help-header {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  background: linear-gradient(to bottom, #2c2c2e, #1c1c1e);
+}
+.help-header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--lbl-1);
+  letter-spacing: -0.01em;
+}
+.help-header-sub {
+  font-size: 11px;
+  color: var(--lbl-3);
+  margin-top: 2px;
+}
+.help-close {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 0.5px solid rgba(255,255,255,0.12);
+  color: var(--lbl-2);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+.help-close:hover {
+  background: rgba(255,69,58,0.18);
+  border-color: rgba(255,69,58,0.35);
+  color: var(--red);
+}
+
+.help-body {
+  padding: 18px 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.help-section {
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 0.5px solid rgba(255,255,255,0.08);
+}
+.help-section-hdr {
+  padding: 10px 14px;
+  background: rgba(44,44,46,0.90);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s;
+}
+.help-section-hdr:hover { background: rgba(58,58,60,0.90); }
+.help-section-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.help-section-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lbl-1);
+  flex: 1;
+}
+.help-section-tag {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 100px;
+  text-transform: uppercase;
+}
+.tag-left  { background: rgba(10,132,255,0.14); border: 0.5px solid rgba(10,132,255,0.28); color: var(--blue); }
+.tag-right { background: rgba(191,90,242,0.14); border: 0.5px solid rgba(191,90,242,0.28); color: var(--purple); }
+.tag-center{ background: rgba(48,209,88,0.12);  border: 0.5px solid rgba(48,209,88,0.26);  color: var(--green); }
+.tag-eve   { background: rgba(255,69,58,0.12);  border: 0.5px solid rgba(255,69,58,0.28);  color: var(--red); }
+
+.help-section-chevron {
+  color: var(--lbl-4);
+  font-size: 10px;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.help-section.open .help-section-chevron { transform: rotate(180deg); }
+
+.help-section-body {
+  display: none;
+  padding: 12px 14px;
+  background: rgba(28,28,30,0.90);
+  border-top: 0.5px solid rgba(255,255,255,0.06);
+}
+.help-section.open .help-section-body { display: block; }
+
+.help-text {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--lbl-2);
+}
+.help-text p { margin-bottom: 7px; }
+.help-text p:last-child { margin-bottom: 0; }
+.help-text strong { color: var(--lbl-1); font-weight: 600; }
+.help-text code {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: rgba(255,255,255,0.07);
+  border: 0.5px solid rgba(255,255,255,0.10);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--blue);
+}
+.help-range {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--r-sm);
+  border: 0.5px solid rgba(255,255,255,0.06);
+}
+.help-range-item { display: flex; flex-direction: column; gap: 2px; }
+.help-range-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--lbl-4); }
+.help-range-val { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--lbl-2); }
+
+.help-impact-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.help-impact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--lbl-2);
+  line-height: 1.5;
+}
+.help-impact-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+/* Help footer hint */
+.help-footer {
+  padding: 10px 22px 14px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  font-size: 11px;
+  color: var(--lbl-4);
+  text-align: center;
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HELP OVERLAY ═══════════════════════════════════════════ -->
+<div class="help-overlay" id="help-overlay" onclick="closeHelp(event)">
+  <div class="help-panel">
+    <div class="help-header">
+      <div>
+        <div class="help-header-title">⚛ Parameter Reference</div>
+        <div class="help-header-sub">Click any section to expand • BB84 Quantum Key Distribution</div>
+      </div>
+      <button class="help-close" onclick="toggleHelp()">✕</button>
+    </div>
+    <div class="help-body">
+
+      <!-- Source Mode -->
+      <div class="help-section open" onclick="toggleSection(this)">
+        <div class="help-section-hdr">
+          <div class="help-section-icon" style="background:rgba(10,132,255,0.14)">🔬</div>
+          <span class="help-section-name">Source Mode</span>
+          <span class="help-section-tag tag-left">Left Panel</span>
+          <span class="help-section-chevron">▼</span>
+        </div>
+        <div class="help-section-body">
+          <div class="help-text">
+            <p>Controls the photon source model used in the simulation.</p>
+            <p><strong>Ideal</strong> — A perfect single-photon emitter. Every pulse produces exactly one photon with no extraneous noise sources. In this mode, QBER is determined solely by the Channel Noise slider. Useful for studying fundamental BB84 mechanics without experimental imperfections.</p>
+            <p><strong>Realistic</strong> — Models a weak coherent pulse (WCP) laser, the most common practical QKD source. This activates an additional QBER penalty of <code>~8% × Multi-Photon Probability</code> and a ~0.5% dark-count floor. Multi-photon pulses expose the system to Photon-Number-Splitting (PNS) attacks where Eve can split off a photon undetected.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Photon Emission Rate -->
+      <div class="help-section" onclick="toggleSection(this)">
+        <div class="help-section-hdr">
+          <div class="help-section-icon" style="background:rgba(10,132,255,0.14)">⚡</div>
+          <span class="help-section-name">Photon Emission Rate</span>
+          <span class="help-section-tag tag-left">Left Panel</span>
+          <span class="help-section-chevron">▼</span>
+        </div>
+        <div class="help-section-body">
+          <div class="help-text">
+            <p>The number of photons Alice's source emits per second (ph/s).</p>
+            <div class="help-range">
+              <div class="help-range-item"><span class="help-range-label">Min</span><span class="help-range-val">1 ph/s</span></div>
+              <div class="help-range-item"><span class="help-range-label">Default</span><span class="help-range-val">50 ph/s</span></div>
+              <div class="help-range-item"><span class="help-range-label">Max</span><span class="help-range-val">100 ph/s</span></div>
+            </div>
+            <div class="help-impact-list">
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--blue)"></div>Higher rates increase raw photon throughput and the density of the animated quantum channel.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--blue)"></div>In practice, emission rate affects the clock speed of the QKD session and the achievable raw key rate, but does <strong>not</strong> directly affect QBER or security.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--orange)"></div>Very high rates can exceed detector bandwidth, causing saturation — modeled here by the Detector Efficiency slider.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Channel Noise Level -->
+      <div class="help-section" onclick="toggleSection(this)">
+        <div class="help-section-hdr">
+          <div class="help-section-icon" style="background:rgba(255,69,58,0.14)">📡</div>
+          <span class="help-section-name">Channel Noise Level</span>
+          <span class="help-section-tag tag-left">Left Panel</span>
+          <span class="help-section-chevron">▼</span>
+        </div>
+        <div class="help-section-body">
+          <div class="help-text">
+            <p>The depolarizing probability of the quantum channel — the most critical parameter in the simulation.</p>
+            <div class="help-range">
+              <div class="help-range-item"><span class="help-range-label">Min</span><span class="help-range-val">0%</span></div>
+              <div class="help-range-item"><span class="help-range-label">Default</span><span class="help-range-val">5%</span></div>
+              <div class="help-range-item"><span class="help-range-label">Max</span><span class="help-range-val">50%</span></div>
+              <div class="help-range-item"><span class="help-range-label">⚠ Threshold</span><span class="help-range-val" style="color:var(--orange)">11%</span></div>
+            </div>
+            <p>Physically models fiber birefringence, thermal photon absorption, polarization misalignment, and detector dark counts. Implemented as a <strong>depolarizing channel</strong> — with probability <code>p</code>, a Pauli-X gate (bit flip) is applied to the qubit state.</p>
+            <p>The QBER contribution from noise is approximately equal to this value. Once QBER ≥ <strong>11%</strong> (Shor-Preskill bound), the secure key rate drops to zero and the protocol must abort — Eve could have intercepted too many bits.</p>
+            <div class="help-impact-list">
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--green)"></div><code>0–11%</code>: Secure zone — positive secure key rate, channel usable.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--red)"></div><code>&gt;11%</code>: Abort zone — QBER chart turns red, key generation halted.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detector Efficiency -->
+      <div class="help-section" onclick="toggleSection(this)">
+        <div class="help-section-hdr">
+          <div class="help-section-icon" style="background:rgba(48,209,88,0.12)">🔭</div>
+          <span class="help-section-name">Detector Efficiency</span>
+          <span class="help-section-tag tag-left">Left Panel</span>
+          <span class="help-section-chevron">▼</span>
+        </div>
+        <div class="help-section-body">
+          <div class="help-text">
+            <p>The probability that Bob's single-photon detector successfully registers an incoming photon.</p>
+            <div class="help-range">
+              <div class="help-range-item"><span class="help-range-label">Min</span><span class="help-range-val">10%</span></div>
+              <div class="help-range-item"><span class="help-range-label">Default</span><span class="help-range-val">85%</span></div>
+              <div class="help-range-item"><span class="help-range-label">Max</span><span class="help-range-val">100%</span></div>
+            </div>
+            <p>Modeled as a Bernoulli trial: each sifted photon is accepted with probability <code>η</code> (detector efficiency). Photons not registered are discarded.</p>
+            <div class="help-impact-list">
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--green)"></div>Detector efficiency <strong>reduces the sifted key rate</strong> (fewer usable bits) but does not itself introduce bit errors — Bob only records bits when he detects a photon.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--orange)"></div>Real InGaAs SPDs (infrared) typically achieve 10–30%. Superconducting nanowire SPDs (SNSPDs) can exceed 95%.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--red)"></div>Very low efficiency may make key generation impractical even with low noise.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multi-Photon Probability -->
+      <div class="help-section" onclick="toggleSection(this)">
+        <div class="help-section-hdr">
+          <div class="help-section-icon" style="background:rgba(255,159,10,0.14)">💥</div>
+          <span class="help-section-name">Multi-Photon Probability</span>
+          <span class="help-section-tag tag-left">Left Panel</span>
+          <span class="help-section-chevron">▼</span>
+        </div>
+        <div class="help-section-body">
+          <div class="help-text">
+            <p>The probability that a laser pulse contains 2 or more photons. Only active in <strong>Realistic</strong> source mode.</p>
+            <div class="help-range">
+              <div class="help-range-item"><span class="help-range-label">Min</span><span class="help-range-val">0%</span></div>
+              <div class="help-range-item"><span class="help-range-label">Default</span><span class="help-range-val">10%</span></div>
+              <div class="help-range-item"><span class="help-range-label">Max</span><span class="help-range-val">50%</span></div>
+            </div>
+            <p>Multi-photon pulses are vulnerable to <strong>Photon-Number-Splitting (PNS) attacks</strong>: Eve can block one photon to keep for later measurement while forwarding the other to Bob. This is undetectable because Bob still receives a photon.</p>
+            <p>The effective QBER increase from multi-photon events is approximately <code>~8% × mp</code>. Decoy-state protocols were designed specifically to detect and bound PNS attacks. This parameter is grayed out in Ideal mode.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Polarization Basis -->
+      <div class="help-section" onclick="toggleSection(this)">
+        <div class="help-section-hdr">
+          <div class="help-section-icon" style="background:rgba(191,90,242,0.14)">🧭</div>
+          <span class="help-section-name">Polarization Basis</span>
+          <span class="help-section-tag tag-left">Left Panel</span>
+          <span class="help-section-chevron">▼</span>
+        </div>
+        <div class="help-section-body">
+          <div class="help-text">
+            <p>Selects the display basis for photon state symbols in the visualization and photon state grid.</p>
+            <p><strong>Rectilinear ↕↔ (Z-basis)</strong> — Uses vertical <code>|0⟩ = ↕</code> and horizontal <code>|1⟩ = ↔</code> polarization. This is Alice's computational basis where <code>|0⟩ = [1,0]</code> and <code>|1⟩ = [0,1]</code> as quantum state vectors.</p>
+            <p><strong>Diagonal ↗↘ (X-basis)</strong> — Uses +45° <code>|+⟩ = ↗</code> and −45° <code>|−⟩ = ↘</code> polarization, where <code>|+⟩ = (|0⟩+|1⟩)/√2</code> and <code>|−⟩ = (|0⟩−|1⟩)/√2</code>.</p>
+            <p>In BB84, Alice and Bob each independently choose a random basis for every photon. Only pulses where both chose the same basis are kept during sifting (~50% of all pulses). The basis choice itself is never secret — only the measurement outcomes matter.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- QBER vs Time -->
+      <div class="help-section" onclick="toggleSection(this)">
+        <div class="help-section-hdr">
+          <div class="help-section-icon" style="background:rgba(10,132,255,0.14)">📈</div>
+          <span class="help-section-name">QBER vs Time Chart</span>
+          <span class="help-section-tag tag-left">Left Panel</span>
+          <span class="help-section-chevron">▼</span>
+        </div>
+        <div class="help-section-body">
+          <div class="help-text">
+            <p>Live chart of the <strong>Quantum Bit Error Rate (QBER)</strong> — the fraction of sifted key bits where Alice and Bob's records disagree.</p>
+            <p>The solid line shows instantaneous QBER with small shot-noise fluctuations to model finite-key effects. The <strong>orange dashed line</strong> marks the 11% Shor-Preskill security threshold.</p>
+            <div class="help-impact-list">
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--blue)"></div><strong>Blue line</strong>: QBER below threshold — secure key possible.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--red)"></div><strong>Red line</strong>: QBER above threshold — protocol should abort.</div>
+            </div>
+            <p style="margin-top:8px">Formula: <code>QBER = errors / sifted_bits</code>. With Eve active, QBER ≈ <code>p + 0.25(1−p)</code> where <code>p</code> is channel noise, because Eve's basis mismatch (~50% of intercepts) each contribute a 50% error probability.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Eavesdropper (Eve) -->
+      <div class="help-section" onclick="toggleSection(this)">
+        <div class="help-section-hdr">
+          <div class="help-section-icon" style="background:rgba(255,69,58,0.14)">👁</div>
+          <span class="help-section-name">Eavesdropper (Eve) Toggle</span>
+          <span class="help-section-tag tag-eve">Center Bar</span>
+          <span class="help-section-chevron">▼</span>
+        </div>
+        <div class="help-section-body">
+          <div class="help-text">
+            <p>Enables or disables an <strong>intercept-resend attack</strong> by Eve — the eavesdropper positioned midway on the quantum channel.</p>
+            <p>When <strong>Enabled</strong>, for every photon Alice sends, Eve intercepts it and measures it in a randomly chosen basis (Z or X) using the Born rule. She then re-prepares and forwards a new photon in her measured state to Bob. Because the No-Cloning Theorem prevents copying a quantum state, this is the best she can do.</p>
+            <p>Physics outcome: when Eve's basis matches Alice's (~50% of cases), she learns the bit with no disturbance. When they mismatch (~50%), the qubit collapses to a random eigenstate in Eve's basis, leaving Bob with a ~50% chance of a wrong bit. Net effect: <strong>+25% QBER</strong>.</p>
+            <div class="help-impact-list">
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--red)"></div>Eve's channel-interception glow and node appear in the visualization.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--red)"></div>Eve's partial key and corrupted message attempt appear in the right panel.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--orange)"></div>Detection probability <code>P = 1 − (3/4)^K</code> where K is the number of bits checked. With 200 check bits, detection is effectively certain (≈99.999%).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Channel Security Bar -->
+      <div class="help-section" onclick="toggleSection(this)">
+        <div class="help-section-hdr">
+          <div class="help-section-icon" style="background:rgba(191,90,242,0.14)">🔐</div>
+          <span class="help-section-name">Privacy Amplification & Key Rate</span>
+          <span class="help-section-tag tag-right">Right Panel</span>
+          <span class="help-section-chevron">▼</span>
+        </div>
+        <div class="help-section-body">
+          <div class="help-text">
+            <p>After sifting, Privacy Amplification (PA) compresses the raw sifted key to remove any information Eve may have gained, using the <strong>Shor-Preskill bound</strong>.</p>
+            <p>Secure key rate: <code>r = max(0, 1 − 2h₂(QBER))</code>, where <code>h₂</code> is the binary Shannon entropy function. The final secure key has <code>⌊rawSifted × r⌋</code> bits.</p>
+            <p>PA uses <strong>universal hashing</strong> (Toeplitz matrices in practice) — here the length reduction is simulated. The OTP (One-Time Pad) requirement demands at least <code>8 × messageLength</code> secure key bits. Key bits are never reused.</p>
+            <div class="help-impact-list">
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--green)"></div><code>r → 1</code> at QBER = 0%: no information leaked, full key usable.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--orange)"></div><code>r → 0</code> at QBER ≈ 14.6% (exact Shor-Preskill zero). The practical 11% threshold gives margin for reconciliation overhead.</div>
+              <div class="help-impact-item"><div class="help-impact-dot" style="background:var(--red)"></div>Below zero: protocol aborts, no key generated.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="help-footer">Click outside this panel or press Esc to close</div>
+  </div>
+</div>
+
+<!-- ── TITLE BAR ─────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="topbar-title">
+    Quantum Cryptography Simulator
+    <span>/ BB84 · Born Rule · Shor-Preskill PA</span>
+  </div>
+  <button class="help-btn" onclick="toggleHelp()" title="Parameter reference & help">?</button>
+  <div class="status-bar">
+    <div class="s-chip">
+      <div class="s-dot blue"></div>
+      <span>Emission&nbsp;<strong id="em-disp" style="color:var(--blue);font-weight:600">50</strong>&nbsp;ph/s</span>
+    </div>
+    <div class="s-chip">
+      <div class="s-dot green" id="qber-dot"></div>
+      <span>QBER&nbsp;<strong id="qber-disp" style="color:var(--green);font-weight:600">0.0</strong>%</span>
+    </div>
+    <div class="s-chip">
+      <div class="s-dot green" id="sec-dot"></div>
+      <span id="sec-txt" style="color:var(--green);font-weight:600">Secure</span>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ══ LEFT PANEL ══════════════════════════════════════════ -->
+  <div class="panel left">
+    <div class="panel-hdr">
+      <div class="panel-title">Source Controls</div>
+    </div>
+    <div class="panel-body">
+
+      <!-- Source Mode -->
+      <div class="gcard">
+        <div class="out-lbl">Source Mode</div>
+        <div class="src-toggle" style="margin-top:4px">
+          <button class="src-btn on" id="ideal-btn" onclick="setSrc('ideal')">Ideal</button>
+          <button class="src-btn" id="real-btn" onclick="setSrc('realistic')">Realistic</button>
+        </div>
+      </div>
+
+      <!-- Sliders -->
+      <div class="gcard" style="display:flex;flex-direction:column;gap:13px">
+
+        <div class="sl-group">
+          <div class="sl-hdr">
+            <span class="sl-lbl">Photon Emission Rate</span>
+            <span class="sl-val" id="sv-em">50 ph/s</span>
+          </div>
+          <input type="range" id="sl-em" min="1" max="100" value="50" step="1"
+            oninput="updSlider('em',this.value);fillSlider(this)">
+          <canvas class="mini-g" id="mg-em"></canvas>
+        </div>
+
+        <div class="sep-line"></div>
+
+        <div class="sl-group">
+          <div class="sl-hdr">
+            <span class="sl-lbl">Channel Noise Level</span>
+            <span class="sl-val" id="sv-noise" style="color:var(--red);background:var(--red-bg);border-color:var(--red-bd)">5%</span>
+          </div>
+          <input type="range" id="sl-noise" min="0" max="50" value="5" step="1"
+            style="--sl-color:var(--red)"
+            oninput="updSlider('noise',this.value);fillSlider(this)">
+          <canvas class="mini-g" id="mg-noise"></canvas>
+        </div>
+
+        <div class="sep-line"></div>
+
+        <div class="sl-group">
+          <div class="sl-hdr">
+            <span class="sl-lbl">Detector Efficiency</span>
+            <span class="sl-val" id="sv-det" style="color:var(--green);background:var(--green-bg);border-color:var(--green-bd)">85%</span>
+          </div>
+          <input type="range" id="sl-det" min="10" max="100" value="85" step="1"
+            style="--sl-color:var(--green)"
+            oninput="updSlider('det',this.value);fillSlider(this)">
+          <canvas class="mini-g" id="mg-det"></canvas>
+        </div>
+
+        <div class="sep-line"></div>
+
+        <div class="sl-group">
+          <div class="sl-hdr">
+            <span class="sl-lbl">Multi-Photon Probability</span>
+            <span class="sl-val" id="sv-mp" style="color:var(--orange);background:var(--orange-bg);border-color:rgba(255,159,10,0.28)">10%</span>
+          </div>
+          <input type="range" id="sl-mp" min="0" max="50" value="10" step="1"
+            style="--sl-color:var(--orange)"
+            oninput="updSlider('mp',this.value);fillSlider(this)">
+          <canvas class="mini-g" id="mg-mp"></canvas>
+        </div>
+
+      </div>
+
+      <!-- Polarization Basis -->
+      <div class="gcard">
+        <div class="out-lbl">Polarization Basis</div>
+        <div class="basis-wrap" style="margin-top:6px">
+          <button class="basis-btn on" id="b-rect" onclick="setBasis('rect')">↕↔ &nbsp;Rectilinear</button>
+          <button class="basis-btn" id="b-diag" onclick="setBasis('diag')">↗↘ &nbsp;Diagonal</button>
+        </div>
+      </div>
+
+      <!-- QBER Chart -->
+      <div class="gcard">
+        <div class="sec-title" style="font-size:11px;margin-bottom:8px">QBER vs Time</div>
+        <div class="chart-wrap"><canvas id="qber-chart"></canvas></div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="act-btns">
+        <button class="btn-act" onclick="doReset()">↺ &nbsp;Reset</button>
+        <button class="btn-act" onclick="doRandom()">⚡ &nbsp;Randomize</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ CENTER PANEL ════════════════════════════════════════ -->
+  <div class="center-panel">
+    <div class="channel-area">
+      <canvas id="photon-canvas"></canvas>
+      <canvas id="noise-canvas"></canvas>
+
+      <!-- Quantum State Overlay -->
+      <div class="qstate-overlay">
+        <div class="s-chip" style="font-size:11px;gap:7px;background:rgba(28,28,30,0.88)">
+          <span style="color:#66b2ff;font-weight:600">|0⟩</span>
+          <span style="color:rgba(255,255,255,0.22)">↔</span>
+          <span style="color:#d08aff;font-weight:600">|1⟩</span>
+          <span style="color:rgba(255,255,255,0.14)">·</span>
+          <span style="color:var(--lbl-3)">BB84 Quantum Channel</span>
+        </div>
+        <div class="sec-badge secure" id="ch-badge">SECURE</div>
+      </div>
+
+      <!-- BB84 step table -->
+      <div id="bb84-tbl" style="position:absolute;top:52px;left:18px;right:18px;display:none">
+        <div class="bb84-box"><div id="bb84-content"></div></div>
+      </div>
+
+      <!-- Node Labels -->
+      <div class="ch-nodes">
+        <div class="node-lbl">
+          <div class="node-av alice">A</div>
+          <div class="node-nm alice">Alice</div>
+        </div>
+        <div class="node-lbl" id="eve-node" style="display:none">
+          <div class="node-av eve">E</div>
+          <div class="node-nm eve">Eve</div>
+        </div>
+        <div class="node-lbl">
+          <div class="node-av bob">B</div>
+          <div class="node-nm bob">Bob</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Control Bar — Eve Toggle + Mode -->
+    <div class="center-ctrl">
+      <!-- Eavesdropper toggle -->
+      <div class="eve-tog-container">
+        <label class="tog-wrap" title="Toggle Eve intercept-resend attack (adds ~25% QBER)">
+          <div class="tog">
+            <input type="checkbox" id="eve-tog" onchange="toggleEve(this.checked)">
+            <div class="tog-track"></div>
+            <div class="tog-thumb"></div>
+          </div>
+          <span class="tog-lbl">Eavesdropper (Eve)</span>
+        </label>
+        <div class="eve-state-pill disabled" id="eve-state-pill">Disabled</div>
+      </div>
+
+      <div class="mode-pills">
+        <button class="mode-pill on" id="mp-live" onclick="setMode('live')">Live</button>
+        <button class="mode-pill" id="mp-bb84" onclick="setMode('bb84')">BB84 Step</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT PANEL ═════════════════════════════════════════ -->
+  <div class="panel right">
+    <div class="panel-hdr">
+      <div class="panel-title">Encrypt / Decrypt</div>
+      <div class="sec-badge secure" id="key-badge">KEY SECURE</div>
+    </div>
+    <div class="panel-body">
+
+      <!-- Alice Encrypt -->
+      <div>
+        <div class="sec-title">Alice — Encrypt</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <textarea class="msg-in" id="msg-in" rows="3"
+            placeholder="Enter message to encrypt…&#10;e.g. Quantum is secure!"></textarea>
+          <button class="btn-primary" onclick="doEncrypt()">⚛ &nbsp;Quantum Encrypt</button>
+        </div>
+      </div>
+
+      <!-- Quantum Key -->
+      <div>
+        <div class="out-lbl">Quantum Sifted Key (post–PA, partial)</div>
+        <div class="key-disp" id="key-out">—</div>
+      </div>
+
+      <!-- Privacy Amplification Stats -->
+      <div class="pa-strip" id="pa-strip" style="display:none">
+        <div class="pa-row">
+          <span class="pa-lbl">Raw sifted bits</span>
+          <span class="pa-val" id="pa-raw">—</span>
+        </div>
+        <div class="pa-row">
+          <span class="pa-lbl">Shannon entropy h(QBER)</span>
+          <span class="pa-val" id="pa-h">—</span>
+        </div>
+        <div class="pa-row">
+          <span class="pa-lbl">Shor-Preskill rate r = 1−2h</span>
+          <span class="pa-val" id="pa-rate">—</span>
+        </div>
+        <div class="pa-row">
+          <span class="pa-lbl">Secure key bits (post-PA)</span>
+          <span class="pa-val" id="pa-final">—</span>
+        </div>
+        <div class="pa-row">
+          <span class="pa-lbl">OTP status</span>
+          <span class="pa-val" id="pa-otp">—</span>
+        </div>
+      </div>
+
+      <!-- Photon States -->
+      <div>
+        <div class="out-lbl">Encoded Photon States</div>
+        <div class="ph-states" id="ph-states">
+          <span style="font-size:11px;color:var(--lbl-3);align-self:center">Encrypt a message to see photon states</span>
+        </div>
+      </div>
+
+      <!-- Ciphertext -->
+      <div>
+        <div class="out-lbl">Ciphertext (binary)</div>
+        <div class="mono-out" id="cipher-out">—</div>
+      </div>
+
+      <div class="sep-line"></div>
+
+      <!-- Bob Decrypt -->
+      <div>
+        <div class="sec-title suc">Bob — Receive &amp; Decrypt</div>
+        <button class="btn-primary btn-success" onclick="doDecrypt()">⬇ &nbsp;Receive &amp; Decrypt</button>
+      </div>
+
+      <div>
+        <div class="out-lbl">Bob's Decrypted Message</div>
+        <div class="mono-out" id="dec-out"
+          style="color:var(--green);background:rgba(48,209,88,0.08);border-color:rgba(48,209,88,0.22)">—</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-c">
+          <div class="stat-c-lbl">Key Length</div>
+          <div class="stat-c-val acc" id="s-keylen">—</div>
+        </div>
+        <div class="stat-c">
+          <div class="stat-c-lbl">QBER</div>
+          <div class="stat-c-val" id="s-qber">—</div>
+        </div>
+        <div class="stat-c">
+          <div class="stat-c-lbl">Bit Error Rate</div>
+          <div class="stat-c-val" id="s-ber">—</div>
+        </div>
+        <div class="stat-c">
+          <div class="stat-c-lbl">Key Mismatch</div>
+          <div class="stat-c-val" id="s-mm">—</div>
+        </div>
+      </div>
+
+      <!-- Security Bar -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div class="out-lbl" style="margin:0">Channel Security</div>
+          <span style="font-size:10px;color:var(--orange);font-family:var(--font-mono);font-weight:600">11% threshold (Shor-Preskill)</span>
+        </div>
+        <div class="prog-bar">
+          <div class="prog-fill" id="sec-bar" style="width:100%"></div>
+        </div>
+      </div>
+
+      <div class="sep-line"></div>
+
+      <!-- Eve Right Panel -->
+      <div id="eve-right">
+        <div class="sec-title dan">Eve — Intercepted</div>
+        <div>
+          <div class="out-lbl">Eve's Partial Key (basis-matched only)</div>
+          <div class="key-disp" id="eve-key-out"
+            style="color:var(--red);background:rgba(255,69,58,0.08);border-color:rgba(255,69,58,0.24)">—</div>
+        </div>
+        <div>
+          <div class="out-lbl">Eve's Corrupted Message</div>
+          <div class="mono-out" id="eve-msg-out"
+            style="color:var(--red);background:rgba(255,69,58,0.08);border-color:rgba(255,69,58,0.24)">—</div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-c">
+            <div class="stat-c-lbl">QBER Elevated</div>
+            <div class="stat-c-val dan" id="eve-s-qber">—</div>
+          </div>
+          <div class="stat-c">
+            <div class="stat-c-lbl">Detection Prob.</div>
+            <div class="stat-c-val dan" id="eve-s-det">—</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- .main -->
+
+<!-- EVE BOTTOM BAR -->
+<div class="eve-bar" id="eve-bar">
+  <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
+    <div style="width:7px;height:7px;border-radius:50%;background:var(--red);animation:pulse-r 1s ease-in-out infinite"></div>
+    <span style="font-family:var(--font);font-size:11px;font-weight:700;color:var(--red);letter-spacing:.08em">EVE INTERCEPTING</span>
+  </div>
+  <div class="eve-st">
+    <div class="eve-st-lbl">Basis Mismatch</div>
+    <div class="eve-st-val" id="eb-bm">~50%</div>
+  </div>
+  <div class="eve-st">
+    <div class="eve-st-lbl">QBER Increase</div>
+    <div class="eve-st-val" id="eb-qi">+25%</div>
+  </div>
+  <div class="eve-key-flow" id="eb-key">01101001 11010011 00101101 10110010...</div>
+  <div class="eve-st">
+    <div class="eve-st-lbl">Detection Prob.</div>
+    <div class="eve-st-val" id="eb-dp">—</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+//  QUANTUM CRYPTOGRAPHY SIMULATOR v2 — macOS Dark Edition
+//  Physics engine: Born rule quantum state vectors, Shor-Preskill PA,
+//  QBER threshold 11%, binary entropy, true OTP (no key reuse)
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── HELP OVERLAY ──────────────────────────────────────────────────────
+function toggleHelp() {
+  const ov = document.getElementById('help-overlay');
+  ov.classList.toggle('open');
+}
+function closeHelp(e) {
+  if (e.target === document.getElementById('help-overlay')) toggleHelp();
+}
+function toggleSection(el) {
+  // Prevent bubbling from children triggering parent section toggle
+  el.classList.toggle('open');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('help-overlay').classList.remove('open');
+});
+
+// ── MATH HELPERS ──────────────────────────────────────────────────────
+const INV_SQRT2 = 1 / Math.SQRT2;
+
+function binaryEntropy(p) {
+  if (p <= 0 || p >= 1) return 0;
+  return -p * math.log2(p) - (1 - p) * math.log2(1 - p);
+}
+function shorPreskillRate(qber) {
+  return Math.max(0, 1 - 2 * binaryEntropy(qber));
+}
+
+// ── QUANTUM STATE VECTORS ─────────────────────────────────────────────
+const Q = {
+  ket0:  [1,           0          ],
+  ket1:  [0,           1          ],
+  plus:  [INV_SQRT2,   INV_SQRT2  ],
+  minus: [INV_SQRT2,  -INV_SQRT2  ],
+};
+
+function prepareState(bit, basis) {
+  if (basis === 0) return bit === 0 ? [...Q.ket0] : [...Q.ket1];
+  else             return bit === 0 ? [...Q.plus] : [...Q.minus];
+}
+function bornProb(state, basis) {
+  if (basis === 0) { return state[0] * state[0]; }
+  else { const amp = (state[0] + state[1]) * INV_SQRT2; return amp * amp; }
+}
+function collapse(basis, outcome) {
+  if (basis === 0) return outcome === 0 ? [...Q.ket0] : [...Q.ket1];
+  else             return outcome === 0 ? [...Q.plus] : [...Q.minus];
+}
+function measure(state, basis) {
+  return Math.random() < bornProb(state, basis) ? 0 : 1;
+}
+function depolarize(state, p) {
+  if (Math.random() < p) return [state[1], state[0]];
+  return state;
+}
+
+// ── SLIDER FILL HELPER ────────────────────────────────────────────────
+function fillSlider(el) {
+  const min = parseFloat(el.min) || 0;
+  const max = parseFloat(el.max) || 100;
+  const pct = ((parseFloat(el.value) - min) / (max - min)) * 100;
+  el.style.setProperty('--sl-pct', pct + '%');
+}
+
+// ── SIMULATOR STATE ───────────────────────────────────────────────────
+const S = {
+  em: 50, noise: 0.05, det: 0.85, mp: 0.10,
+  basis: 'rect', src: 'ideal', eve: false, mode: 'live',
+  qber: 0,
+  currentKey: [], bobKey: [], eveKey: [],
+  encrypted: null, lastMsg: '',
+  THRESH: 0.11,
+  lastPA: null,
+};
+
+// ── BB84 CORE ─────────────────────────────────────────────────────────
+function runBB84(msgLen) {
+  const bitsNeeded = msgLen * 8;
+  const expectedSifted = 0.5 * Math.max(S.det, 0.10);
+  const rawN = Math.max(2048, Math.ceil(bitsNeeded / expectedSifted * 6));
+  const channelNoise = S.src === 'realistic'
+    ? Math.min(0.49, S.noise + S.mp * 0.08 + 0.005)
+    : S.noise;
+
+  const sKeyA = [], sKeyB = [], eKey = [];
+  let errors = 0;
+
+  for (let i = 0; i < rawN; i++) {
+    const aBit   = Math.random() < 0.5 ? 0 : 1;
+    const aBasis = Math.random() < 0.5 ? 0 : 1;
+    let state = prepareState(aBit, aBasis);
+
+    if (S.eve) {
+      const eBasis = Math.random() < 0.5 ? 0 : 1;
+      const eMeasured = measure(state, eBasis);
+      eKey.push(eMeasured);
+      state = collapse(eBasis, eMeasured);
+    }
+
+    state = depolarize(state, channelNoise);
+    const bBasis = Math.random() < 0.5 ? 0 : 1;
+    if (aBasis !== bBasis) continue;
+    if (Math.random() > S.det) continue;
+    const bMeasured = measure(state, bBasis);
+    sKeyA.push(aBit);
+    sKeyB.push(bMeasured);
+    if (bMeasured !== aBit) errors++;
+  }
+
+  const rawSifted = sKeyA.length;
+  const qber = rawSifted > 0 ? errors / rawSifted : 0;
+  const h      = binaryEntropy(qber);
+  const r      = shorPreskillRate(qber);
+  const finalN = Math.floor(rawSifted * r);
+  const secureKeyA = sKeyA.slice(0, finalN);
+  const secureKeyB = sKeyB.slice(0, finalN);
+  const K = Math.min(Math.floor(rawSifted * 0.25), 200);
+  const eveDetectProb = S.eve ? 1 - Math.pow(0.75, K) : 0;
+
+  let mismatch = 0;
+  const minLen = Math.min(secureKeyA.length, secureKeyB.length);
+  for (let i = 0; i < minLen; i++) {
+    if (secureKeyA[i] !== secureKeyB[i]) mismatch++;
+  }
+  const mismatchRate = minLen > 0 ? mismatch / minLen : 0;
+
+  return { sKeyA: secureKeyA, sKeyB: secureKeyB, eKey,
+           rawSifted, finalN, qber, errors, h, r,
+           eveDetectProb, mismatchRate };
+}
+
+// ── OTP ───────────────────────────────────────────────────────────────
+function keyByte(key, byteIdx) {
+  let b = 0;
+  for (let j = 0; j < 8; j++) b = (b << 1) | (key[byteIdx * 8 + j] || 0);
+  return b;
+}
+function xorEnc(msg, key) {
+  return Array.from(msg).map((c, i) => c.charCodeAt(0) ^ keyByte(key, i));
+}
+function xorDec(enc, key) {
+  return enc.map((b, i) => String.fromCharCode(b ^ keyByte(key, i))).join('');
+}
+
+// ── SLIDER UPDATES ────────────────────────────────────────────────────
+const sliderCfg = {
+  em:    { prop:'em',    fmt: v => v + ' ph/s', min:1,  max:100             },
+  noise: { prop:'noise', fmt: v => v + '%',     min:0,  max:50,  scale:100  },
+  det:   { prop:'det',   fmt: v => v + '%',     min:10, max:100, scale:100  },
+  mp:    { prop:'mp',    fmt: v => v + '%',     min:0,  max:50,  scale:100  },
+};
+const mgData   = {em:[],noise:[],det:[],mp:[]};
+const mgColors = {em:'#0A84FF',noise:'#FF453A',det:'#30D158',mp:'#FF9F0A'};
+
+function updSlider(id, val) {
+  const v = parseFloat(val);
+  const cfg = sliderCfg[id];
+  S[cfg.prop] = cfg.scale ? v / cfg.scale : v;
+  document.getElementById('sv-' + id).textContent = cfg.fmt(v);
+  if (id === 'em') document.getElementById('em-disp').textContent = v;
+  const el = document.getElementById('sl-' + id);
+  if (el) fillSlider(el);
+  pushMG(id, v);
+  updQBER();
+}
+
+function pushMG(id, v) {
+  if (!mgData[id].length) mgData[id] = Array(40).fill(v);
+  mgData[id].push(v);
+  if (mgData[id].length > 40) mgData[id].shift();
+  drawMG(id);
+}
+
+function drawMG(id) {
+  const c = document.getElementById('mg-' + id); if (!c) return;
+  const ctx = c.getContext('2d');
+  c.width = c.offsetWidth || 220; c.height = 30;
+  ctx.clearRect(0, 0, c.width, c.height);
+  const d = mgData[id];
+  const mn = Math.min(...d); const mx = Math.max(...d, mn + 1);
+  const rng = mx - mn;
+  const col = mgColors[id];
+  ctx.beginPath(); ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+  d.forEach((v, i) => {
+    const x = (i / (d.length - 1)) * c.width;
+    const y = c.height - ((v - mn) / rng) * (c.height - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.lineTo(c.width, c.height); ctx.lineTo(0, c.height); ctx.closePath();
+  ctx.fillStyle = col + '22'; ctx.fill();
+}
+
+// ── LIVE QBER ─────────────────────────────────────────────────────────
+function updQBER() {
+  const p = S.src === 'realistic'
+    ? Math.min(0.49, S.noise + S.mp * 0.08 + 0.005)
+    : S.noise;
+  let q = S.eve ? p + 0.25 * (1 - p) : p;
+  q = Math.min(q, 0.5);
+  S.qber = q;
+
+  const pct = (q * 100).toFixed(1);
+  document.getElementById('qber-disp').textContent = pct;
+
+  const comp = q >= S.THRESH;
+  const qd = document.getElementById('qber-dot');
+  const sd = document.getElementById('sec-dot');
+  const st = document.getElementById('sec-txt');
+  const kb = document.getElementById('key-badge');
+  const cb = document.getElementById('ch-badge');
+  const sb = document.getElementById('sec-bar');
+
+  if (comp) {
+    [qd, sd].forEach(d => { d.style.background = 'var(--red)'; d.style.boxShadow = '0 0 5px rgba(255,69,58,0.6)'; });
+    document.getElementById('qber-disp').style.color = 'var(--red)';
+    st.textContent = 'Compromised'; st.style.color = 'var(--red)';
+    kb.className = 'sec-badge comp'; kb.textContent = 'KEY COMPROMISED';
+    cb.className = 'sec-badge comp'; cb.textContent = 'COMPROMISED';
+    sb.className = 'prog-fill dan'; sb.style.width = Math.max(4, (1 - q / 0.5) * 100) + '%';
+  } else {
+    [qd, sd].forEach(d => { d.style.background = 'var(--green)'; d.style.boxShadow = '0 0 5px rgba(48,209,88,0.6)'; });
+    document.getElementById('qber-disp').style.color = 'var(--green)';
+    st.textContent = 'Secure'; st.style.color = 'var(--green)';
+    kb.className = 'sec-badge secure'; kb.textContent = 'KEY SECURE';
+    cb.className = 'sec-badge secure'; cb.textContent = 'SECURE';
+    sb.className = 'prog-fill'; sb.style.width = Math.max(4, (1 - q / S.THRESH) * 100) + '%';
+  }
+  pushQBERChart(q);
+}
+
+// ── CONTROLS ──────────────────────────────────────────────────────────
+function setSrc(m) {
+  S.src = m;
+  document.getElementById('ideal-btn').classList.toggle('on', m === 'ideal');
+  document.getElementById('real-btn').classList.toggle('on',  m === 'realistic');
+  updQBER();
+}
+
+function setBasis(b) {
+  S.basis = b;
+  document.getElementById('b-rect').classList.toggle('on', b === 'rect');
+  document.getElementById('b-diag').classList.toggle('on', b === 'diag');
+}
+
+function toggleEve(on) {
+  S.eve = on;
+
+  const pill = document.getElementById('eve-state-pill');
+  if (on) {
+    pill.textContent = 'Enabled';
+    pill.className = 'eve-state-pill enabled';
+  } else {
+    pill.textContent = 'Disabled';
+    pill.className = 'eve-state-pill disabled';
+  }
+
+  document.getElementById('eve-bar').classList.toggle('show', on);
+  document.getElementById('eve-node').style.display  = on ? 'flex' : 'none';
+  document.getElementById('eve-right').style.display = on ? 'flex' : 'none';
+  document.getElementById('noise-canvas').style.opacity = on ? '1' : '0';
+  updQBER();
+}
+
+function setMode(m) {
+  S.mode = m;
+  document.getElementById('mp-live').classList.toggle('on', m === 'live');
+  document.getElementById('mp-bb84').classList.toggle('on', m === 'bb84');
+  const tbl = document.getElementById('bb84-tbl');
+  if (m === 'bb84') { tbl.style.display = 'block'; renderBB84Table(); }
+  else               tbl.style.display = 'none';
+}
+
+function doReset() {
+  [['sl-em',50],['sl-noise',5],['sl-det',85],['sl-mp',10]].forEach(([id, v]) => {
+    const el = document.getElementById(id);
+    el.value = v; fillSlider(el);
+    updSlider(id.replace('sl-',''), v);
+  });
+  document.getElementById('msg-in').value = '';
+  ['key-out','cipher-out','dec-out','eve-key-out','eve-msg-out'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '—';
+  });
+  document.getElementById('ph-states').innerHTML =
+    '<span style="font-size:11px;color:var(--lbl-3);align-self:center">Encrypt a message to see photon states</span>';
+  ['s-keylen','s-qber','s-ber','s-mm','eve-s-qber','eve-s-det'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '—';
+  });
+  document.getElementById('pa-strip').style.display = 'none';
+  S.encrypted = null; S.currentKey = []; S.bobKey = []; S.eveKey = []; S.lastPA = null;
+  setSrc('ideal'); setBasis('rect');
+}
+
+function doRandom() {
+  const em = Math.floor(Math.random() * 99) + 1;
+  const ns = Math.floor(Math.random() * 25);
+  const dt = Math.floor(Math.random() * 40) + 60;
+  const mp = Math.floor(Math.random() * 25);
+  ['em','noise','det','mp'].forEach((k, i) => {
+    const v = [em,ns,dt,mp][i];
+    const el = document.getElementById('sl-' + k);
+    el.value = v; fillSlider(el);
+    updSlider(k, v);
+  });
+}
+
+// ── ENCRYPT ───────────────────────────────────────────────────────────
+function doEncrypt() {
+  const msg = document.getElementById('msg-in').value.trim();
+  if (!msg) return;
+  S.lastMsg = msg;
+
+  const r = runBB84(msg.length);
+  S.lastPA = r;
+  S.currentKey = r.sKeyA;
+  S.bobKey     = r.sKeyB;
+  S.eveKey     = r.eKey;
+
+  const bitsNeeded = msg.length * 8;
+  const keyOK      = S.currentKey.length >= bitsNeeded;
+
+  document.getElementById('pa-strip').style.display = 'flex';
+  document.getElementById('pa-raw').textContent   = r.rawSifted + ' b';
+  document.getElementById('pa-h').textContent     = r.h.toFixed(4);
+  document.getElementById('pa-rate').textContent  = (r.r * 100).toFixed(2) + '%';
+  document.getElementById('pa-final').textContent = r.finalN + ' b';
+
+  const otpEl = document.getElementById('pa-otp');
+  if (r.finalN === 0 && r.r === 0) {
+    otpEl.textContent = '✗ Key rate zero — abort'; otpEl.className = 'pa-val err';
+  } else if (!keyOK) {
+    otpEl.textContent = '⚠ Insufficient key bits'; otpEl.className = 'pa-val warn';
+  } else {
+    otpEl.textContent = '✓ True OTP satisfied'; otpEl.className = 'pa-val ok';
+  }
+
+  if (r.finalN === 0) {
+    document.getElementById('cipher-out').textContent = '⚠ QBER too high — no secure key. Abort.';
+    document.getElementById('key-out').textContent    = '— protocol aborted —';
+    S.encrypted = null; updQBER(); return;
+  }
+
+  const usableChars = keyOK ? msg.length : Math.floor(S.currentKey.length / 8);
+  const msgToEnc    = msg.substring(0, usableChars);
+  S.encrypted = xorEnc(msgToEnc, S.currentKey);
+
+  const kbStr = S.currentKey.slice(0, 80).join('');
+  document.getElementById('key-out').textContent = fmtBits(kbStr) + (keyOK ? '' : ' ⚠ partial only');
+
+  const cbStr = S.encrypted.map(b => b.toString(2).padStart(8,'0')).join(' ');
+  document.getElementById('cipher-out').textContent = cbStr.substring(0, 240) + (cbStr.length > 240 ? '…' : '');
+
+  renderPHStates(S.currentKey.slice(0, 48));
+
+  const qberPct = (r.qber * 100).toFixed(2) + '%';
+  const mmPct   = (r.mismatchRate * 100).toFixed(2) + '%';
+  const berPct  = (Math.min(r.mismatchRate * 8, 1) * 100).toFixed(1) + '%';
+  document.getElementById('s-keylen').textContent = S.currentKey.length + ' b';
+  document.getElementById('s-qber').textContent   = qberPct;
+  document.getElementById('s-ber').textContent    = berPct;
+  document.getElementById('s-mm').textContent     = mmPct;
+  ['s-qber','s-ber','s-mm'].forEach(id => {
+    document.getElementById(id).className = 'stat-c-val ' + (r.qber >= S.THRESH ? 'dan' : 'suc');
+  });
+
+  if (S.eve) {
+    const ek = S.eveKey.slice(0, 70).join('');
+    document.getElementById('eve-key-out').textContent = fmtBits(ek);
+    document.getElementById('eve-s-qber').textContent  = qberPct;
+    const dp = (r.eveDetectProb * 100).toFixed(2) + '%';
+    document.getElementById('eve-s-det').textContent = dp;
+    document.getElementById('eb-dp').textContent     = dp;
+    document.getElementById('eb-key').textContent    = ek.substring(0, 60) + '...';
+    document.getElementById('eb-qi').textContent     = '+' + ((r.qber - S.noise) * 100).toFixed(2) + '%';
+    document.getElementById('eb-bm').textContent     = '~50%';
+  }
+  updQBER();
+}
+
+// ── DECRYPT ───────────────────────────────────────────────────────────
+function doDecrypt() {
+  if (!S.encrypted || !S.currentKey.length) {
+    document.getElementById('dec-out').textContent = 'No encrypted data — encrypt first.';
+    return;
+  }
+  const decKey = (S.bobKey && S.bobKey.length) ? S.bobKey : S.currentKey;
+  const decMsg = xorDec(S.encrypted, decKey);
+  const isCompromised = S.qber >= S.THRESH;
+  const decEl = document.getElementById('dec-out');
+  decEl.style.color = isCompromised ? 'var(--red)' : 'var(--green)';
+  decEl.style.background = isCompromised ? 'rgba(255,69,58,0.08)' : 'rgba(48,209,88,0.08)';
+  decEl.style.borderColor = isCompromised ? 'rgba(255,69,58,0.24)' : 'rgba(48,209,88,0.22)';
+  decEl.textContent = decMsg;
+
+  if (S.eve) {
+    const eveDecKey = S.eveKey.length >= 8
+      ? S.eveKey
+      : Array.from({length: S.currentKey.length}, () => Math.random() < 0.5 ? 0 : 1);
+    document.getElementById('eve-msg-out').textContent = xorDec(S.encrypted, eveDecKey);
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+function fmtBits(bits) {
+  let r = '';
+  for (let i = 0; i < bits.length; i += 8) r += bits.substring(i, i + 8) + ' ';
+  return r.trim();
+}
+
+function renderPHStates(bits) {
+  const c = document.getElementById('ph-states');
+  c.innerHTML = '';
+  const sym = [['↕','↔'],['↗','↘']];
+  const bIdx = S.basis === 'rect' ? 0 : 1;
+  bits.forEach(bit => {
+    const el = document.createElement('div');
+    el.className = 'ph-bit ' + (bit === 0 ? 'z' : 'o');
+    el.textContent = sym[bIdx][bit];
+    el.title = bit === 0 ? '|0⟩ (' + (S.basis==='rect'?'↕':'↗') + ')' : '|1⟩ (' + (S.basis==='rect'?'↔':'↘') + ')';
+    c.appendChild(el);
+  });
+}
+
+// ── BB84 STEP TABLE ───────────────────────────────────────────────────
+function renderBB84Table() {
+  const n = 14;
+  const bits  = Array.from({length:n}, () => Math.random() < 0.5 ? 0 : 1);
+  const aB    = Array.from({length:n}, () => Math.random() < 0.5 ? '+' : '×');
+  const bB    = Array.from({length:n}, () => Math.random() < 0.5 ? '+' : '×');
+  const eB    = S.eve ? Array.from({length:n}, () => Math.random() < 0.5 ? '+' : '×') : null;
+
+  const stSym = (bit, basis) => {
+    if (basis === '+') return bit === 0 ? '↕' : '↔';
+    return bit === 0 ? '↗' : '↘';
+  };
+
+  const bobBits = bits.map((b, i) => {
+    if (aB[i] !== bB[i]) return null;
+    let state = prepareState(b, aB[i]==='+' ? 0 : 1);
+    if (S.eve && eB && eB[i] !== aB[i]) {
+      const eBasisIdx = eB[i] === '+' ? 0 : 1;
+      const eMeas = measure(state, eBasisIdx);
+      state = collapse(eBasisIdx, eMeas);
+    }
+    state = depolarize(state, S.noise);
+    const bBasisIdx = bB[i] === '+' ? 0 : 1;
+    return measure(state, bBasisIdx);
+  });
+
+  let h = `<table>
+    <tr><td class="rh">Alice bit</td>${bits.map(b=>`<td>${b}</td>`).join('')}</tr>
+    <tr><td class="rh">Alice basis</td>${aB.map(b=>`<td>${b}</td>`).join('')}</tr>
+    <tr><td class="rh">Photon state</td>${bits.map((b,i)=>`<td>${stSym(b,aB[i])}</td>`).join('')}</tr>`;
+  if (eB) h += `<tr><td class="rh" style="color:var(--red)">Eve basis</td>${eB.map((b,i)=>`<td style="color:${eB[i]!==aB[i]?'var(--red)':'var(--orange)'}">${b}</td>`).join('')}</tr>`;
+  h += `<tr><td class="rh">Bob basis</td>${bB.map(b=>`<td>${b}</td>`).join('')}</tr>
+    <tr><td class="rh">Match</td>${aB.map((a,i)=>`<td class="${a===bB[i]?'ok':'no'}">${a===bB[i]?'✓':'✗'}</td>`).join('')}</tr>
+    <tr><td class="rh">Bob bit</td>${aB.map((a,i)=>a===bB[i]?`<td class="${bobBits[i]!==bits[i]?'no':'kb'}">${bobBits[i]}</td>`:`<td style="color:var(--lbl-4)">—</td>`).join('')}</tr>
+    <tr><td class="rh">Sifted key</td>${aB.map((a,i)=>a===bB[i]?`<td class="kb">${bits[i]}</td>`:`<td style="color:var(--lbl-4)">—</td>`).join('')}</tr>
+  </table>`;
+  document.getElementById('bb84-content').innerHTML = h;
+}
+
+// ── QBER CHART (dark mode) ────────────────────────────────────────────
+let qChart;
+const qHist = {vals: Array(40).fill(0)};
+
+function initQChart() {
+  const ctx = document.getElementById('qber-chart').getContext('2d');
+  qChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array(40).fill(''),
+      datasets: [
+        {
+          label: 'QBER',
+          data: [...qHist.vals],
+          borderColor: '#0A84FF',
+          backgroundColor: 'rgba(10,132,255,0.14)',
+          borderWidth: 1.5, pointRadius: 0, tension: 0.4, fill: true
+        },
+        {
+          label: 'Threshold',
+          data: Array(40).fill(S.THRESH),
+          borderColor: 'rgba(255,159,10,0.55)',
+          borderWidth: 1, borderDash: [3,4], pointRadius: 0, fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: {duration: 180},
+      plugins: {legend: {display:false}, tooltip: {enabled:false}},
+      scales: {
+        x: {display:false},
+        y: {
+          min: 0, max: 0.55, display: true,
+          ticks: {
+            color:'rgba(255,255,255,0.30)',
+            font:{size:9,family:"'SF Mono','Menlo',monospace"},
+            maxTicksLimit:5,
+            callback: v => (v*100).toFixed(0)+'%'
+          },
+          grid: {color:'rgba(255,255,255,0.06)', drawBorder:false}
+        }
+      }
+    }
+  });
+}
+
+function pushQBERChart(q) {
+  qHist.vals.push(q); qHist.vals.shift();
+  if (!qChart) return;
+  qChart.data.datasets[0].data = [...qHist.vals];
+  qChart.data.datasets[0].borderColor      = q >= S.THRESH ? '#FF453A' : '#0A84FF';
+  qChart.data.datasets[0].backgroundColor  = q >= S.THRESH ? 'rgba(255,69,58,0.14)' : 'rgba(10,132,255,0.14)';
+  qChart.update('none');
+}
+
+// ── PHOTON CANVAS (dark background) ──────────────────────────────────
+const photons = [];
+let raf, lastT = 0;
+
+class Photon {
+  constructor(cw, ch) { this.init(cw, ch); }
+  init(cw, ch) {
+    this.x = 55; this.y = ch * 0.44 + (Math.random() - 0.5) * 28;
+    this.vx = (2.5 + Math.random() * 3.5) * (S.em / 60);
+    this.r = 1.8 + Math.random() * 1.4;
+    this.bit = Math.random() < 0.5 ? 0 : 1;
+    this.a = 0; this.ma = 0.65 + Math.random() * 0.30;
+    this.phase = Math.random() * Math.PI * 2;
+    // Vivid neon colors for dark background
+    this.col = this.bit === 0 ? [30, 130, 255] : [165, 55, 235];
+    this.W = cw; this.H = ch; this.dead = false;
+    this.trail = []; this.intercepted = false; this.distorted = false;
+    this.eveX = cw * 0.5;
+  }
+  update(dt) {
+    this.phase += dt * 4;
+    if (this.x < 110) this.a = Math.min(this.ma, this.a + dt * 4);
+    if (S.eve && !this.intercepted && this.x >= this.eveX - 5) {
+      this.intercepted = true;
+      if (Math.random() < 0.45) { this.distorted = true; this.col = [255, 70, 58]; this.vx *= 0.75; }
+    }
+    this.trail.unshift({x:this.x, y:this.y, a:this.a});
+    if (this.trail.length > 12) this.trail.pop();
+    this.x += this.vx;
+    const jitter = S.noise * 18;
+    this.y += (Math.random() - 0.5) * jitter;
+    if (this.distorted) this.y += Math.sin(this.phase * 6) * 4;
+    if (this.x > this.W - 80) this.a = Math.max(0, this.a - dt * 5);
+    if (this.x > this.W - 30 || this.a <= 0) this.dead = true;
+  }
+  draw(ctx) {
+    if (this.a <= 0) return;
+    const [r, g, b] = this.col;
+    // Trail
+    this.trail.forEach((t, i) => {
+      const ta = (1 - i / this.trail.length) * this.a * 0.35;
+      ctx.beginPath(); ctx.arc(t.x, t.y, this.r * (1 - i / this.trail.length) * 0.7, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${r},${g},${b},${ta})`; ctx.fill();
+    });
+    // Glow
+    const grd = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r * 9);
+    grd.addColorStop(0, `rgba(${r},${g},${b},${this.a * 0.40})`);
+    grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r * 9, 0, Math.PI * 2);
+    ctx.fillStyle = grd; ctx.fill();
+    // Core
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${r},${g},${b},${this.a})`; ctx.fill();
+    // Polarization marker
+    ctx.save(); ctx.translate(this.x, this.y); ctx.globalAlpha = this.a * 0.95;
+    ctx.strokeStyle = `rgba(${r},${g},${b},1)`; ctx.lineWidth = 1.4;
+    if (S.basis === 'rect') {
+      if (this.bit === 0) { ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(0,7); ctx.stroke(); }
+      else                { ctx.beginPath(); ctx.moveTo(-7,0); ctx.lineTo(7,0); ctx.stroke(); }
+    } else {
+      if (this.bit === 0) { ctx.beginPath(); ctx.moveTo(-5,5);  ctx.lineTo(5,-5); ctx.stroke(); }
+      else                { ctx.beginPath(); ctx.moveTo(-5,-5); ctx.lineTo(5,5);  ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+}
+
+function initCanvas() {
+  const cv  = document.getElementById('photon-canvas');
+  const nc  = document.getElementById('noise-canvas');
+  const par = cv.parentElement;
+  function resize() {
+    cv.width = par.clientWidth; cv.height = par.clientHeight;
+    nc.width = par.clientWidth; nc.height = par.clientHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function animate(t) {
+    const dt = Math.min((t - lastT) / 1000, 0.05); lastT = t;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+
+    // Dark grid
+    ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.028)'; ctx.lineWidth = 0.5;
+    for (let x = 0; x < cv.width;  x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,cv.height); ctx.stroke(); }
+    for (let y = 0; y < cv.height; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(cv.width,y); ctx.stroke(); }
+    ctx.restore();
+
+    // Channel line
+    const cy = cv.height * 0.44;
+    ctx.save(); ctx.setLineDash([4,8]); ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(60,cy); ctx.lineTo(cv.width-60,cy); ctx.stroke(); ctx.restore();
+
+    if (S.eve) {
+      const ex = cv.width * 0.5;
+      const grd = ctx.createRadialGradient(ex, cy, 0, ex, cy, 80);
+      grd.addColorStop(0, 'rgba(255,69,58,0.16)'); grd.addColorStop(1, 'rgba(255,69,58,0)');
+      ctx.beginPath(); ctx.arc(ex, cy, 80, 0, Math.PI*2); ctx.fillStyle = grd; ctx.fill();
+      ctx.save(); ctx.strokeStyle = 'rgba(255,69,58,0.35)'; ctx.lineWidth = 1; ctx.setLineDash([2,5]);
+      ctx.beginPath(); ctx.moveTo(ex,cy-55); ctx.lineTo(ex,cy+55); ctx.stroke(); ctx.restore();
+
+      const nctx = nc.getContext('2d'); nctx.clearRect(0,0,nc.width,nc.height);
+      for (let i = 0; i < 2; i++) {
+        if (Math.random() < 0.08) {
+          const y = Math.random() * nc.height;
+          nctx.fillStyle = `rgba(255,69,58,${Math.random() * 0.06})`;
+          nctx.fillRect(0, y, nc.width, 1.5);
+        }
+      }
+    }
+
+    if (Math.random() < S.em / 160 && photons.length < Math.min(35, S.em * 0.4)) {
+      photons.push(new Photon(cv.width, cv.height));
+    }
+    for (let i = photons.length - 1; i >= 0; i--) {
+      photons[i].W = cv.width; photons[i].H = cv.height;
+      photons[i].eveX = cv.width * 0.5;
+      photons[i].update(dt); photons[i].draw(ctx);
+      if (photons[i].dead) photons.splice(i, 1);
+    }
+    raf = requestAnimationFrame(animate);
+  }
+  raf = requestAnimationFrame(animate);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  initQChart(); initCanvas();
+
+  document.querySelectorAll('input[type=range]').forEach(fillSlider);
+
+  Object.keys(mgData).forEach(k => {
+    const initV = {em:50, noise:5, det:85, mp:10};
+    mgData[k] = Array(40).fill(initV[k]);
+    drawMG(k);
+  });
+  updQBER();
+
+  setInterval(() => {
+    const p = S.src === 'realistic' ? Math.min(0.49, S.noise + S.mp * 0.08 + 0.005) : S.noise;
+    const base = S.eve ? p + 0.25 * (1 - p) : p;
+    pushQBERChart(Math.max(0, Math.min(0.5, base + (Math.random() - 0.5) * 0.008)));
+  }, 700);
+
+  setInterval(() => {
+    Object.keys(mgData).forEach(k => {
+      const el = document.getElementById('sl-' + k);
+      if (el) { const v = parseFloat(el.value) + (Math.random() - 0.5) * 0.4; pushMG(k, v); }
+    });
+  }, 450);
+
+  setInterval(() => { if (S.mode === 'bb84') renderBB84Table(); }, 2000);
+});
+</script>
+</body>
+</html>
